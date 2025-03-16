@@ -11,7 +11,7 @@ load_dotenv()
 
 DB_HOST = os.getenv('DB_HOST', 'localhost')
 DB_PORT = os.getenv('DB_PORT', '5432')
-DB_NAME = os.getenv('DB_NAME', 'assistant_v2')
+DB_NAME = os.getenv('DB_NAME', 'assistant_testing')
 DB_USER = os.getenv('POSTGRES_USER')
 DB_PASSWORD = os.getenv('POSTGRES_PASSWORD')
 
@@ -106,11 +106,8 @@ def setup_form(conn):
             return
 
         USER_ROLE_ID = 2       # Assuming 'user' role is 2.
-        USER_TYPE_HUMAN = 1    # 'human' = 1
-        USER_TYPE_AI = 2       # 'ai' = 2
 
         user_id = str(ULID())
-        ai_user_id = str(ULID())
 
         try:
             with conn.cursor() as cur:
@@ -124,9 +121,9 @@ def setup_form(conn):
                 user_profile_id = cur.fetchone()[0]
 
                 cur.execute("""
-                    INSERT INTO users (user_id, user_type_id, user_profile_id)
-                    VALUES (%s, %s, %s);
-                """, (user_id, USER_TYPE_HUMAN, user_profile_id))
+                    INSERT INTO users (user_id, user_profile_id)
+                    VALUES (%s, %s);
+                """, (user_id, user_profile_id))
 
                 if voice_file:
                     voice_bytes = voice_file.read()
@@ -141,17 +138,12 @@ def setup_form(conn):
                 """, (ai_name, ai_base_prompt))
                 ai_id = cur.fetchone()[0]
 
-                cur.execute("""
-                    INSERT INTO users (user_id, user_type_id, ai_profile_id)
-                    VALUES (%s, %s, %s);
-                """, (ai_user_id, USER_TYPE_AI, ai_id))
-
                 if ai_voice_file:
                     ai_voice_bytes = ai_voice_file.read()
                     cur.execute("""
-                        INSERT INTO voice_recognition (user_id, voice_recognition, recorded_on)
+                        INSERT INTO voice_recognition (ai_id, voice_recognition, recorded_on)
                         VALUES (%s, %s, %s);
-                    """, (ai_user_id, ai_voice_bytes, device_id))
+                    """, (ai_id, ai_voice_bytes, device_id))
 
             conn.commit()
             st.success("🎉 Setup completed successfully!")
@@ -173,7 +165,6 @@ def get_users(conn):
         cur.execute("""
             SELECT 
                 u.user_id,
-                ut.user_type_name,
                 up.full_name,
                 up.nick_name,
                 up.email,
@@ -184,7 +175,6 @@ def get_users(conn):
                 up.user_profile_id,
                 a.ai_id
             FROM users u
-            JOIN user_types ut ON u.user_type_id = ut.user_type_id
             LEFT JOIN user_profile up ON u.user_profile_id = up.user_profile_id
             LEFT JOIN ai a ON u.ai_profile_id = a.ai_id
         """)
