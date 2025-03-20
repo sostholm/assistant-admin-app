@@ -114,16 +114,11 @@ def setup_form(conn):
                 device_id = get_or_create_microphone_device(conn, device_name)
 
                 cur.execute("""
-                    INSERT INTO user_profile (full_name, nick_name, email, phone_number, user_role_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                    RETURNING user_profile_id;
-                """, (full_name, nick_name, email, phone_number, USER_ROLE_ID))
-                user_profile_id = cur.fetchone()[0]
-
-                cur.execute("""
-                    INSERT INTO users (user_id, user_profile_id)
-                    VALUES (%s, %s);
-                """, (user_id, user_profile_id))
+                    INSERT INTO users (user_id, full_name, nick_name, email, phone_number, user_role_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING user_id;
+                """, (user_id, full_name, nick_name, email, phone_number, USER_ROLE_ID))
+                user_id = cur.fetchone()[0]
 
                 if voice_file:
                     voice_bytes = voice_file.read()
@@ -165,18 +160,12 @@ def get_users(conn):
         cur.execute("""
             SELECT 
                 u.user_id,
-                up.full_name,
-                up.nick_name,
-                up.email,
-                up.phone_number,
-                a.ai_name,
-                a.ai_base_prompt,
+                u.full_name,
+                u.nick_name,
+                u.email,
+                u.phone_number,
                 u.user_type_id,
-                up.user_profile_id,
-                a.ai_id
             FROM users u
-            LEFT JOIN user_profile up ON u.user_profile_id = up.user_profile_id
-            LEFT JOIN ai a ON u.ai_profile_id = a.ai_id
         """)
         rows = cur.fetchall()
 
